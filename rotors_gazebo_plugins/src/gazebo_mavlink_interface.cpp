@@ -42,6 +42,7 @@ static const double kAltZurich_m = 488.0; // meters
 // static const double alt_zurich = 86.0; // meters
 static const float kEarthRadius_m = 6353000;  // m
 
+
 GZ_REGISTER_MODEL_PLUGIN(GazeboMavlinkInterface);
 
 GazeboMavlinkInterface::~GazeboMavlinkInterface() {
@@ -120,14 +121,8 @@ void GazeboMavlinkInterface::Load(physics::ModelPtr _model, sdf::ElementPtr _sdf
               gztopic_[index] = "~/"+ model_->GetName() + channel->Get<std::string>("gztopic");
             else
               gztopic_[index] = "control_position_gztopic_" + std::to_string(index);
-	    #if (GAZEBO_MAJOR_VERSION >= 7 && GAZEBO_MINOR_VERSION >= 4) || GAZEBO_MAJOR_VERSION >= 8
-              /// only gazebo 7.4 and above support Any
               joint_control_pub_[index] = node_handle_->Advertise<gazebo::msgs::Any>(
                 gztopic_[index]);
-            #else
-              joint_control_pub_[index] = node_handle_->Advertise<gazebo::msgs::GzString>(
-                gztopic_[index]);
-            #endif
           }
 
           if (channel->HasElement("joint_name"))
@@ -956,48 +951,20 @@ void GazeboMavlinkInterface::handle_message(mavlink_message_t *msg)
       input_index_[i] = i;
     }
 
-    // Set rotor speeds and controller targets for flagged messages.
-    if (controls.flags == kMotorSpeedFlag) {
-      input_reference_.resize(kNOutMax);
-      for (unsigned i = 0; i < kNumMotors; ++i) {
-        if (armed) {
-          input_reference_[i] =
-              (controls.controls[input_index_[i]] + input_offset_[i]) *
-                  input_scaling_[i] +
-              zero_position_armed_[i];
-        } else {
-          input_reference_[i] = zero_position_disarmed_[i];
-        }
-      }
-      received_first_reference_ = true;
-    }
-    else if (controls.flags == kServoPositionFlag) {
-      for (unsigned i = kNumMotors; i < (kNumMotors + kNumServos); ++i) {
-        if (armed) {
-          input_reference_[i] =
-              (controls.controls[input_index_[i - kNumMotors]] + input_offset_[i]) *
-                  input_scaling_[i] +
-              zero_position_armed_[i];
-        } else {
-          input_reference_[i] = zero_position_disarmed_[i];
-        }
+    // set rotor speeds, controller targets
+    input_reference_.resize(kNOutMax);
+    for (int i = 0; i < input_reference_.size(); i++) {
+      if (armed) {
+        input_reference_[i] = (controls.controls[input_index_[i]] + input_offset_[i])
+          * input_scaling_[i] + zero_position_armed_[i];
+        // if (joints_[i])
+        //   gzerr << i << " : " << input_index_[i] << " : " << controls.controls[input_index_[i]] << " : " << input_reference_[i] << "\n";
+      } else {
+        input_reference_[i] = zero_position_disarmed_[i];
       }
     }
-    // Set rotor speeds, controller targets for unflagged messages.
-    else {
-      input_reference_.resize(kNOutMax);
-      for (unsigned i = 0; i < kNOutMax; ++i) {
-        if (armed) {
-          input_reference_[i] =
-              (controls.controls[input_index_[i]] + input_offset_[i]) *
-                  input_scaling_[i] +
-              zero_position_armed_[i];
-        } else {
-          input_reference_[i] = zero_position_disarmed_[i];
-        }
-      }
-      received_first_reference_ = true;
-    }
+
+    received_first_reference_ = true;
     break;
   }
 }
@@ -1030,18 +997,10 @@ void GazeboMavlinkInterface::handle_control(double _dt)
         }
         else if (joint_control_type_[i] == "position_gztopic")
         {
-          #if (GAZEBO_MAJOR_VERSION >= 7 && GAZEBO_MINOR_VERSION >= 4) || GAZEBO_MAJOR_VERSION >= 8
-            /// only gazebo 7.4 and above support Any
-            gazebo::msgs::Any m;
-            m.set_type(gazebo::msgs::Any_ValueType_DOUBLE);
-            m.set_double_value(target);
-          #else
-            std::stringstream ss;
-            gazebo::msgs::GzString m;
-            ss << target;
-            m.set_data(ss.str());
-          #endif
-
+          gazebo::msgs::Any m;
+          m.set_type(gazebo::msgs::Any_ValueType_DOUBLE);
+          m.set_double_value(target);
+        
           joint_control_pub_[i]->Publish(m);
         }
         else if (joint_control_type_[i] == "position_kinematic")

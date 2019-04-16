@@ -711,7 +711,7 @@
       </visual>
 
       <inertial>
-        <mass value="0.13" />
+        <mass value="1e-6" />
         <origin xyz="0 0 0" rpy="0 0 0" />
         <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
       </inertial>
@@ -780,7 +780,7 @@
       imu_suffix=""
       parent_link="${namespace}/vi_sensor_link"
       imu_topic="imu"
-      mass_imu_sensor="0.015"
+      mass_imu_sensor="1e-5"
       gyroscope_noise_density="0.0003394"
       gyroscope_random_walk="0.000038785"
       gyroscope_bias_correlation_time="1000.0"
