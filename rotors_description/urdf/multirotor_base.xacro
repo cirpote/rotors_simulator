@@ -74,6 +74,97 @@
       </collision>
     </link>
 
+    <!-- STARTING ADDITIONAL THINGS FOR GIMBAL -->
+     <joint name="gimbal_y_joint_" type="revolute">
+      <parent link="${robot_namespace}/base_link"/>
+      <child link="${robot_namespace}/gimbal_y_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 0 1"/>
+      <limit effort=".25" velocity=".25" lower="-1" upper="1"/>
+      <dynamics damping="1e-4" friction="1e-4"/> 
+	  </joint>
+	
+    <link name="${robot_namespace}/gimbal_y_link">
+
+      <inertial>
+          <mass value="1e-3"/>
+          <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+          <inertia ixx="1e-3" ixy="1e-5" ixz="1e-5" iyy="1e-3" iyz="1e-5" izz="1e-3"/>
+      </inertial>
+    </link> 
+
+
+     <joint name="gimbal_p_joint_" type="revolute">
+      <parent link="${robot_namespace}/gimbal_y_link"/>
+      <child link="${robot_namespace}/gimbal_p_link"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <axis xyz="0 1 0"/>
+      <limit effort=".25" velocity=".25" lower="-1" upper="1"/>
+      <dynamics damping="1e-4" friction="1e-4"/> 
+	  </joint>
+	
+    <link name="${robot_namespace}/gimbal_p_link">
+      <visual>
+        <origin xyz="0 0 -0.06" rpy="0 0 0"/>
+        <geometry>
+            <box size="0.025 0.025 0.025" /> 
+        </geometry>
+      </visual>
+
+      <inertial>
+          <mass value="1e-3"/>
+          <origin xyz="0 0 0" rpy="0 0 0"/>
+          <inertia ixx="1e-3" ixy="1e-5" ixz="1e-5" iyy="1e-3" iyz="1e-5" izz="1e-3"/>
+      </inertial>
+    </link> 
+
+    <xacro:gimbal_camera name="downward_cam" 
+                         parent="${robot_namespace}/gimbal_p_link" 
+                         ros_topic="camera/image" 
+                         cam_info_topic="camera/camera_info" 
+                         update_rate="20" 
+                         res_x="640" 
+                         res_y="480" 
+                         image_format="R8G8B8" hfov="100">
+        <origin xyz="0.1 0 0" rpy="0 0 0"/>
+    </xacro:gimbal_camera>
+
+
+    
+
+
+
+
+
+    <gazebo>
+      <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+      </plugin>
+    </gazebo>
+
+    <transmission name="gimbal_yaw_axis">
+    <type>transmission_interface/SimpleTransmission</type>
+    <joint name="gimbal_y_joint_">
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+    </joint>
+    <actuator name="gimbal_yaw_actuator">    
+      <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      <mechanicalReduction>1</mechanicalReduction>
+    </actuator>
+    </transmission>
+
+
+    <transmission name="gimbal_pitch_axis">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="gimbal_p_joint_">
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+      </joint>
+      <actuator name="gimbal_pitch_actuator">    
+        <hardwareInterface>hardware_interface/EffortJointInterface</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+    <!-- ENDING ADDITIONAL THINGS FOR GIMBAL -->
+
     <!-- attach multirotor_base_plugin to the base_link -->
     <gazebo>
       <plugin filename="librotors_gazebo_multirotor_base_plugin.so" name="multirotor_base_plugin">
@@ -143,4 +234,53 @@
       <material>Gazebo/${color}</material>
     </gazebo>
   </xacro:macro>
+
+  <!-- GIMBAL CAMERA MACRO -->
+  <xacro:property name="M_PI" value="3.1415926535897931" />
+
+  <xacro:macro name="gimbal_camera" params="name parent *origin ros_topic cam_info_topic update_rate res_x res_y image_format hfov">
+
+    <!-- Gimbal attached to UAV -->
+    <joint name="gimbal_joint" type="fixed">
+        <xacro:insert_block name="origin" />
+        <parent link="${parent}" />
+        <child link="gimbal_r_link" />
+    </joint>
+
+    <link name="gimbal_r_link">
+      <inertial>
+        <mass value="0" />
+        <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
+      </inertial>
+    </link>
+
+    <gazebo reference="gimbal_r_link">
+      <sensor type="camera" name="${name}_camera_sensor">
+        <update_rate>${update_rate}</update_rate>
+        <camera>
+          <horizontal_fov>${hfov * M_PI/180.0}</horizontal_fov>
+          <image>
+            <format>${image_format}</format>
+            <width>${res_x}</width>
+            <height>${res_y}</height>
+          </image>
+          <clip>
+            <near>0.01</near>
+            <far>100</far>
+          </clip>
+        </camera>
+
+        <plugin name="${name}_camera_controller" filename="libgazebo_ros_camera.so">
+          <cameraName>${name}</cameraName>
+          <imageTopicName>${ros_topic}</imageTopicName>
+          <cameraInfoTopicName>${cam_info_topic}</cameraInfoTopicName>
+          <frameName>${name}_optical_frame</frameName>
+        </plugin>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+
 </robot>
+
+

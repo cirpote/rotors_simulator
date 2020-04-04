@@ -52,6 +52,9 @@ void GazeboMultirotorBasePlugin::Load(physics::ModelPtr _model,
                       rotor_velocity_slowdown_sim_,
                       rotor_velocity_slowdown_sim_);
 
+
+  std::cerr << "DIOCANE " << namespace_ << " " << link_name_ << " " << actuators_pub_topic_ << "\n";
+
   node_handle_ = gazebo::transport::NodePtr(new transport::Node());
 
   // Initialise with default namespace (typically /gazebo/default/)
@@ -76,12 +79,28 @@ void GazeboMultirotorBasePlugin::Load(physics::ModelPtr _model,
     // Check if link contains rotor_ in its name.
     int pos = link_name.find("rotor_");
     if (pos != link_name.npos) {
+      //std::cout << link_name << "\n";
       std::string motor_number_str = link_name.substr(pos + 6);
       unsigned int motor_number = std::stoi(motor_number_str);
+      //std::cout << motor_number << "\n";
       std::string joint_name = child_links_[i]->GetName() + "_joint";
       physics::JointPtr joint = this->model_->GetJoint(joint_name);
       motor_joints_.insert(MotorNumberToJointPair(motor_number, joint));
     }
+
+    // Check if link contains rotor_ in its name.
+    // pos = link_name.find("gimbal_");
+    // if (pos != link_name.npos) {
+    //   std::cout << link_name << "\n";
+    //   //std::string gimbal_axis_str = link_name.substr(pos + 7, 3);
+    //   //unsigned int motor_number = std::stoi(motor_number_str);
+    //   std::string joint_name = child_links_[i]->GetName() + "_joint";
+    //   std::cout << joint_name << "\n";
+    //   physics::JointPtr joint = this->model_->GetJoint(joint_name);
+    //   std::cout << "QUI\n";
+    //   motor_joints_.insert(MotorNumberToJointPair(6, joint));
+    //   std::cout << "QUI\n";
+    // }
   }
 }
 
